@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:opentelemetry="http://www.mulesoft.org/schema/mule/opentelemetry"
+	xmlns:salesforce="http://www.mulesoft.org/schema/mule/salesforce"
+	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns="http://www.mulesoft.org/schema/mule/core" 
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" 
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
+	xsi:schemaLocation="
+		http://www.mulesoft.org/schema/mule/ee/core 
+		http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd 
+		http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+		http://www.mulesoft.org/schema/mule/salesforce 
+		http://www.mulesoft.org/schema/mule/salesforce/current/mule-salesforce.xsd
+		http://www.mulesoft.org/schema/mule/opentelemetry 
+		http://www.mulesoft.org/schema/mule/opentelemetry/current/mule-opentelemetry.xsd">
+	
+	<flow name="soql-query" >
+		<salesforce:query doc:name="query" config-ref="GlobalSalesforceConfig">
+			<salesforce:salesforce-query ><![CDATA[ #[vars.queryStatement] ]]></salesforce:salesforce-query>
+			<salesforce:parameters ><![CDATA[#[output application/java --- { queryFilter : vars.queryFilter}]]]></salesforce:parameters>
+		</salesforce:query>
+ 
+		<ee:dynamic-evaluate doc:name="evaluate" expression="#[vars.buildResponse]" target="listIds"/>
+		<!-- <logger doc:name="result" level="DEBUG" category="app" message="#['listIds size: ' ++ (sizeOf(vars.listIds) as String default '') ]" /> -->
+		<error-handler ref="global-error-handler" />
+	</flow>
+
+	<flow name="query-account">
+		<logger doc:name="query account" level="INFO" category="app" message="#['Query account']" />
+		<ee:transform doc:name="create filter" >
+			<ee:variables >
+				<ee:set-variable variableName="queryFilter" ><![CDATA[%dw 2.0
+				output application/java
+				---
+					"'" ++ joinBy(payload.account, "','") ++ "'"
+				]]>
+				</ee:set-variable>	
+			</ee:variables>
+		</ee:transform>
+
+		<set-variable variableName="queryStatement" value="${file::script-account-query.dwl}" doc:name="query statement" />
+		<set-variable variableName="buildResponse" value="${file::script-account-response.dwl}" doc:name="build response" />
+		<flow-ref doc:name="query" name="soql-query"/>
+	</flow>
+
+	<flow name="query-contact">
+		<logger doc:name="query contact" level="INFO" category="app" message="#['Query contact']" />
+		<ee:transform doc:name="create filter" >
+			<ee:variables >
+				<ee:set-variable variableName="queryFilter" ><![CDATA[%dw 2.0
+				output application/java
+				---
+					"'" ++ joinBy(payload.contactId, "','") ++ "'"
+				]]>
+				</ee:set-variable>	
+			</ee:variables>
+		</ee:transform>
+
+		<set-variable variableName="queryStatement" value="${file::script-contactid-query.dwl}" doc:name="query statement" />
+		<set-variable variableName="buildResponse" value="${file::script-contactid-response.dwl}" doc:name="build response" />
+		<flow-ref doc:name="query" name="soql-query"/>
+	</flow>
+
+	<flow name="query-address">
+		<logger doc:name="query address" level="INFO" category="app" message="#['Query address']" />
+		<ee:transform doc:name="create filter" >
+			<ee:variables >
+				<ee:set-variable variableName="queryFilter" ><![CDATA[%dw 2.0
+				output application/java
+				---
+					"'" ++ joinBy(payload.contactId, "','") ++ "'"
+				]]>
+				</ee:set-variable>	
+			</ee:variables>
+		</ee:transform>
+
+		<set-variable variableName="queryStatement" value="${file::script-address-query.dwl}" doc:name="query statement" />
+		<set-variable variableName="buildResponse" value="${file::script-address-response.dwl}" doc:name="build response" />
+		<flow-ref doc:name="query" name="soql-query"/>
+	</flow>
+
+</mule>

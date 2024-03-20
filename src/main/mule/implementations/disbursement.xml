@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mule 
+	xmlns:batch="http://www.mulesoft.org/schema/mule/batch"
+	xmlns:salesforce="http://www.mulesoft.org/schema/mule/salesforce"
+	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" 
+	xmlns="http://www.mulesoft.org/schema/mule/core" 
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" 
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
+	xsi:schemaLocation=" 
+		http://www.mulesoft.org/schema/mule/ee/core 
+		http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd 
+		http://www.mulesoft.org/schema/mule/core 
+		http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+		http://www.mulesoft.org/schema/mule/salesforce 
+		http://www.mulesoft.org/schema/mule/salesforce/current/mule-salesforce.xsd
+		http://www.mulesoft.org/schema/mule/batch 
+		http://www.mulesoft.org/schema/mule/batch/current/mule-batch.xsd">
+
+    <flow name="endpoint-disbursement"> 
+        <flow-ref doc:name="initialize batch" name="initialize-batch"/>
+
+        <ee:transform doc:name="build Salesforce payload for transactions" >
+            <ee:message >
+                <ee:set-payload ><![CDATA[%dw 2.0
+                output application/java
+                ---
+                vars.originalPayload map (item, index) -> {
+                    'Trust_Account__r.IIM_Account_Number__c': item.account,
+                    'Transaction_Number__c':    item.transaction,
+                    'Name':                     item.transaction,
+                    'Code__c':                  item.code,
+                    'Disbursement_Text__c':     item.disbursementText,
+                    'Amount__c':                item.amount,
+                    'Debit_Credit_Indicator__c':item.debitCreditIndicator,
+                    'Status__c':                item.status,
+                    'Settle_Date__c':           item.settleDate as DateTime,
+                    'Settle_Flag__c':           item.settleFlag,
+                    'Income_Indicator__c':      item.incomeIndicator,
+                    'Tax_Code__c':              item.taxCode,
+                    'Tax_Year__c':              item.taxYear,
+                    'Transaction_Date_Time__c': item.date as DateTime
+                }
+                ]]>
+                </ee:set-payload>
+            </ee:message>
+        </ee:transform>
+
+        <set-variable doc:name="set Salesforce object" variableName="salesforceObject" value="Trust_Account_Disbursement__c" />
+        <set-variable doc:name="set operation" variableName="bulkOperation" value="insert" />
+
+        <flow-ref doc:name="run job" name="job-bulk"/>
+        <flow-ref doc:name="service response" name="service-response"/>
+
+        <error-handler ref="global-error-handler" />		
+    </flow>
+</mule>

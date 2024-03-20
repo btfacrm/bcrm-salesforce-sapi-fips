@@ -1,0 +1,138 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mule 
+	xmlns:batch="http://www.mulesoft.org/schema/mule/batch"
+	xmlns:salesforce="http://www.mulesoft.org/schema/mule/salesforce"
+	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" 
+	xmlns="http://www.mulesoft.org/schema/mule/core" 
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" 
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
+	xsi:schemaLocation=" 
+		http://www.mulesoft.org/schema/mule/ee/core 
+		http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd 
+		http://www.mulesoft.org/schema/mule/core 
+		http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+		http://www.mulesoft.org/schema/mule/salesforce 
+		http://www.mulesoft.org/schema/mule/salesforce/current/mule-salesforce.xsd
+		http://www.mulesoft.org/schema/mule/batch 
+		http://www.mulesoft.org/schema/mule/batch/current/mule-batch.xsd">
+
+    <flow name="endpoint-contact">    
+        
+        <flow-ref doc:name="initialize batch" name="initialize-batch"/>
+
+        <flow-ref doc:name="get contact ids" name="query-contact"/>
+        <!-- <logger level="DEBUG" category="app" message="#[output application/json - vars.listIds]" /> -->
+
+        <ee:transform doc:name="build payload with Ids" >
+			<ee:variables >
+				<ee:set-variable variableName="payloadWithIds"><![CDATA[%dw 2.0
+                output application/java
+                ---
+                vars.originalPayload map (item, index) -> {
+                    'Id': (vars.listIds filter ( $.contactId == item.contactId )).id[0],
+                    'RecordType.Name':      'Beneficiary',
+                    'SSOT_Contact_ID__c':   item.contactId,         
+                    ('FirstName' :          item.firstName) if (!isEmpty(item.firstName)),
+                    ('LastName':            item.lastName) if (!isEmpty(item.lastName)),
+                    ('MiddleName':          item.middleInitial) if (!isEmpty(item.middleInitial)),
+                    'SSOT_Name__pc':        item.name,
+                    ('PersonBirthdate':     item.dob as Date) if (!isEmpty(item.dob)),
+                    ('SSOT_Gender__pc':     item.gender) if (!isEmpty(item.gender)),
+                    ('SSN__pc':             item.ssn) if (!isEmpty(item.ssn)),
+                    'SSOT_SSNFlag__pc':     item.ssnFlag,
+                    ('SSOT_Deathdate__pc':  item.dod as Date) if (!isEmpty(item.dod)),
+                    'SSOT_ActiveFlag__pc':  item.activeFlag,
+                    'SSOT_Disbursement_Eligibility_Flag__pc': item.disbursementFlag,
+                    'Contact_Date_Time__pc':item.date as DateTime
+                }
+                ]]>
+				</ee:set-variable>	
+			</ee:variables>
+        </ee:transform>			
+        
+        <!-- 
+        ***********************************************
+        Discover the records to create in PersonAccount
+        ***********************************************
+        -->
+        <ee:transform doc:name="get the records to create" >
+            <ee:message >
+                <ee:set-payload ><![CDATA[%dw 2.0
+                output application/java
+                ---
+                vars.payloadWithIds filter ( isEmpty($.Id) )
+                ]]>
+                </ee:set-payload>
+            </ee:message>
+        </ee:transform>
+
+        <!-- <logger level="DEBUG" category="app" message="#[output application/json - payload]" /> -->
+
+        <choice doc:name="Choice" >
+            <when expression='#[ sizeOf(payload) > 0 ]'>
+
+                <logger level="INFO" category="app" message="#['Records to create in AccountPerson: ' ++ sizeOf(payload) as String]" />
+
+                <!-- *****************************************
+                     Create AccountPerson Object in Salesforce 
+
+                     Remove the null Id field in the records
+                     ***************************************** -->
+                <ee:transform doc:name="remove null ids" >
+                    <ee:message >
+                        <ee:set-payload ><![CDATA[%dw 2.0
+                            output application/java
+                            ---
+                            payload map (items, index) -> (
+                                items filterObject (value, key) -> value != null
+                            )
+                            ]]>
+                        </ee:set-payload>
+                    </ee:message>
+                </ee:transform>
+
+                <!-- <logger level="DEBUG" category="app" message="#[output application/json - payload]" /> -->
+
+                <set-variable doc:name="Salesforce object" variableName="salesforceObject" value="Account" />
+                <set-variable doc:name="operation" variableName="bulkOperation" value="insert"/>
+                <flow-ref doc:name="run job" name="job-bulk"/>
+
+            </when>
+
+        </choice>               
+
+        <!-- *****************************************
+            UPDATE process
+            ****************************************** -->
+
+        <!-- Get the records to update in PersonAccount -->
+        <ee:transform doc:name="get the records to update PersonAccount" >
+            <ee:message >
+                <ee:set-payload ><![CDATA[%dw 2.0
+                output application/java
+                ---
+                vars.payloadWithIds filter ( $.Id != null )
+                ]]>
+                </ee:set-payload>
+            </ee:message>
+        </ee:transform>
+
+        <!-- <logger level="DEBUG" category="app" message="#[output application/json - payload]" /> -->
+
+        <choice doc:name="Choice" >
+            <when expression='#[ sizeOf(payload) > 0 ]'>
+
+                <logger level="INFO" category="app" message="#['Records to update in AccountPerson: ' ++ sizeOf(payload) as String]" />
+
+                <set-variable doc:name="set Salesforce object" variableName="salesforceObject" value="Account" />
+                <set-variable doc:name="set operation" variableName="bulkOperation" value="update"/>
+                <flow-ref doc:name="run job" name="job-bulk"/>
+
+            </when>
+        </choice>    
+
+        <flow-ref doc:name="service response" name="service-response"/>
+
+        <error-handler ref="global-error-handler" />
+    </flow>
+</mule>

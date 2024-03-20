@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mule
+	xmlns:api-gateway="http://www.mulesoft.org/schema/mule/api-gateway"
+	xmlns:validation="http://www.mulesoft.org/schema/mule/validation"
+	xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:apikit="http://www.mulesoft.org/schema/mule/mule-apikit"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:tls="http://www.mulesoft.org/schema/mule/tls"
+	xsi:schemaLocation="
+		http://www.mulesoft.org/schema/mule/api-gateway 
+		http://www.mulesoft.org/schema/mule/api-gateway/current/mule-api-gateway.xsd 
+		http://www.mulesoft.org/schema/mule/validation 
+		http://www.mulesoft.org/schema/mule/validation/current/mule-validation.xsd  
+		http://www.mulesoft.org/schema/mule/mule-apikit 
+		http://www.mulesoft.org/schema/mule/mule-apikit/current/mule-apikit.xsd  
+		http://www.mulesoft.org/schema/mule/http 
+		http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+		http://www.mulesoft.org/schema/mule/tls 
+		http://www.mulesoft.org/schema/mule/tls/current/mule-tls.xsd
+		http://www.mulesoft.org/schema/mule/core 
+		http://www.mulesoft.org/schema/mule/core/current/mule.xsd">
+
+	<configuration-properties file="config.yaml" />
+	<validation:config name="Validation_Config" />
+	<import file="global-configuration-salesforce.xml" />
+	<!-- <import file="global-configuration-tls.xml" /> -->
+	<import file="global-error.xml" />
+
+	<apikit:config
+		name="api-config"
+		api="${api.spec}"
+		outboundHeadersMapName="outboundHeaders"
+		httpStatusVarName="httpStatus" />
+
+	<api-gateway:autodiscovery
+		apiId="${api.id}"
+		ignoreBasePath="true"
+		doc:name="API Autodiscovery"
+		flowRef="api-main" />	
+
+	<http:listener-config name="api-httpListenerConfig">
+		<http:listener-connection
+			host="0.0.0.0"
+			port="${https.port}"
+			protocol="${httpsprotocol}"
+			tlsContext="TLS_Context_FIPS">
+		</http:listener-connection>
+	</http:listener-config>
+
+	<tls:context name="TLS_Context_FIPS" 
+		doc:name="TLS Context FIPS"
+		doc:description="This connector is used to secure HTTP connectors with TLS 1.2 security and encryption. This is necessary for communications between mule apps and other services outside Anypoint but also is just another layer of security between the services hosted on Anypoint">
+		<tls:key-store type="pkcs12" 
+			path="${jks.path}"
+			keyPassword="${jks.keypassword}"
+			password="${jks.keypassword}" alias="${jks.alias}"/>
+	</tls:context>
+</mule>

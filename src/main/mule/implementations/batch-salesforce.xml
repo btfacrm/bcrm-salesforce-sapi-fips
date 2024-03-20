@@ -1,0 +1,147 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mule 
+	xmlns:batch="http://www.mulesoft.org/schema/mule/batch"
+	xmlns:salesforce="http://www.mulesoft.org/schema/mule/salesforce"
+	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" 
+	xmlns="http://www.mulesoft.org/schema/mule/core" 
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" 
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
+	xsi:schemaLocation=" 
+		http://www.mulesoft.org/schema/mule/ee/core 
+		http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd 
+		http://www.mulesoft.org/schema/mule/core 
+		http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+		http://www.mulesoft.org/schema/mule/salesforce 
+		http://www.mulesoft.org/schema/mule/salesforce/current/mule-salesforce.xsd
+		http://www.mulesoft.org/schema/mule/batch 
+		http://www.mulesoft.org/schema/mule/batch/current/mule-batch.xsd">
+		
+	<sub-flow name="initialize-batch">
+		<logger level="INFO" category="app" message="#['Input records: ' ++ (sizeOf(payload) as String default '') ]" /> 
+		<set-variable doc:name="start service" variableName="start" value="#[now() as Number {unit: 'milliseconds'}]" />
+		<set-variable doc:name="save payload" variableName="originalPayload" value="#[payload]" />
+		<set-variable doc:name="initialize batch list" variableName="batchList" value="#[[]]"  />
+	</sub-flow>
+	
+	<flow name="job-bulk" >
+		<set-variable doc:name="register start job" variableName="batchStart" value="#[now() as Number {unit: 'milliseconds'}]"/>
+
+		<ee:transform doc:name="build bulk csv" >
+            <ee:message >
+                <ee:set-payload ><![CDATA[%dw 2.0
+                output application/csv quoteValues=true,header=true,separator=","
+                ---
+				payload
+                ]]>
+                </ee:set-payload>
+            </ee:message>
+        </ee:transform>		
+
+		<salesforce:create-job-bulk-api-v2 doc:name="job" 
+			config-ref="GlobalSalesforceConfig" 
+			objectType="#[vars.salesforceObject]" 
+			operation="#[vars.bulkOperation]" 
+			externalIdFieldName="Id"/>
+		<set-variable doc:name="save jobId" variableName="jobId" value="#[payload.id]"/>
+		<logger level="INFO" category="app" message="#['Salesforce job: ' ++ vars.jobId as String]" />
+
+		<try doc:name="verify job status">
+			<until-successful doc:name="until sucess" maxRetries="${batch.maxretries}" millisBetweenRetries="${batch.millisretry}">
+				<salesforce:get-job-state-bulk-api-v2 config-ref="GlobalSalesforceConfig" id="#[vars.jobId]"/>
+				<choice doc:name="verify job status"  >
+					<when expression='#[payload.state == "JobComplete"]'>
+						<set-variable doc:name="status 200" variableName="httpStatus" value="#[200]"/>
+						<set-variable doc:name="message success" variableName="message" value="${messages.batch-success}"/>
+					</when>
+					<when expression='#[payload.state == "Failed"]'>
+						<set-variable doc:name="status 404" variableName="httpStatus" value="#[404]"/>
+						<set-variable doc:name="message error" variableName="message" value="${messages.batch-error}"/>
+					</when>
+					<otherwise>
+						<set-variable doc:name="status 404" variableName="httpStatus" value="#[404]"/>
+						<set-variable doc:name="message still running" variableName="message" value="${messages.batch-stillrunning}"/>
+						<logger doc:name="attempt" level="INFO" message="#['Job: ' ++ (vars.jobId as String) ++ ', status: ' ++ payload.state ++ ', max attempts: ${batch.maxretries}']" />
+						<raise-error doc:name="Raise error" type="MULE:CONNECTIVITY" description="The batch job still processing in Salesforce"/>
+					</otherwise>
+				</choice>
+			</until-successful>
+
+			<error-handler>
+				<on-error-continue/>	
+			</error-handler>
+		</try>
+		<set-variable doc:name="records failed" variableName="numberRecordsFailed" value="#[ payload.numberRecordsFailed ]"/>
+		<set-variable doc:name="records processed" variableName="numberRecordsProcessed" value="#[ payload.numberRecordsProcessed ]"/>
+		<set-variable doc:name="job state" variableName="state" value="#[ payload.state ]"/>
+		<set-variable doc:name="batch-time-process" variableName="internalBatchDuration" value="#[(now() as Number {unit: 'milliseconds'}) - vars.batchStart]"/>
+		
+		<flow-ref doc:name="build batch result" name="batch-result"/>
+	</flow>
+
+	<sub-flow name="batch-result">
+		<ee:transform doc:name="add result to batchList" >
+			<ee:variables >
+				<ee:set-variable variableName="batchList"><![CDATA[%dw 2.0
+                output application/json
+                ---
+				vars.batchList ++
+				[{
+					job: payload.id,
+					state: vars.state,
+					object: vars.salesforceObject,
+					operation: vars.bulkOperation,
+					recordsFailed: vars.numberRecordsFailed,
+					recordsProcessed: vars.numberRecordsProcessed,
+					datastoreProcessingTime: payload.totalProcessingTime,
+					batchProcessingTime: vars.internalBatchDuration
+				}]
+                ]]>
+				</ee:set-variable>	
+			</ee:variables>
+        </ee:transform>		
+	</sub-flow>
+
+	<sub-flow name="service-response">
+		<set-variable doc:name="batch-time-process" variableName="serviceProcessingTime" value="#[(now() as Number {unit: 'milliseconds'}) - vars.start]"  />
+		
+		<ee:transform doc:name="count jobs with errors" >
+			<ee:variables >
+				<ee:set-variable variableName="jobsWithErrors"><![CDATA[%dw 2.0
+					output application/json
+					import countBy from dw::core::Arrays
+					---
+					if ( !isEmpty(vars.batchList))
+						vars.batchList countBy($.recordsFailed != 0)
+					else 0
+                ]]>
+				</ee:set-variable>	
+			</ee:variables>
+        </ee:transform>		
+
+		<choice doc:name="jobs with errors" >
+			<when expression='#[vars.jobsWithErrors > 0]'>
+				<set-variable doc:name="status 404" variableName="httpStatus" value="#[404]"/>
+				<set-variable doc:name="message error" variableName="message" value="${messages.batch-backend-errorrecords}"/>
+			</when>
+		</choice>
+
+		<ee:transform doc:name="add result to batchList" >
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+					output application/json
+					---
+					{
+						message: vars.message,
+						status: vars.httpStatus,
+						receivedRecords: sizeOf(vars.originalPayload),
+						serviceProcessingTime: vars.serviceProcessingTime,
+						correlationId: correlationId,
+						batchList: vars.batchList
+					}
+					]]>
+				</ee:set-payload>
+			</ee:message>
+        </ee:transform>		
+	</sub-flow>
+
+</mule>

@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Configuration>
+
+	<!-- Default values for loggers and appenders -->
+	<Properties>
+		<Property name="logapplication">INFO</Property>
+		<Property name="logconnectors">WARN</Property>
+		<Property name="logroot">INFO</Property>
+	</Properties>
+
+    <Appenders>
+
+        <!-- Sends log data to the filesystem of the VM. -->
+        <RollingFile name="FILE"        
+                     fileName="${sys:mule.home}${sys:file.separator}logs${sys:file.separator}${sys:domain}.log"
+                     filePattern="${sys:mule.home}${sys:file.separator}logs${sys:file.separator}${sys:domain}-%i.log">
+            <PatternLayout pattern="[%d{MM-dd HH:mm:ss.SSS}] %-5p %c{1} [%t]: %m%n"/>
+            <DefaultRolloverStrategy max="10"/>
+            <Policies>
+                <SizeBasedTriggeringPolicy size="10 MB" />
+            </Policies>
+        </RollingFile>
+
+    </Appenders>
+
+    <Loggers>
+        <!-- Defined in guide: Integrate with Your Logging System Using Log4j  -->
+        <AsyncLogger name="com.gigaspaces" level="ERROR"/>
+        <AsyncLogger name="com.j_spaces" level="ERROR"/>
+        <AsyncLogger name="com.sun.jini" level="ERROR"/>
+        <AsyncLogger name="net.jini" level="ERROR"/>
+        <AsyncLogger name="org.apache" level="WARN"/>
+        <AsyncLogger name="org.apache.cxf" level="WARN"/>
+        <AsyncLogger name="org.springframework.beans.factory" level="WARN"/>
+        <AsyncLogger name="org.mule" level="INFO"/>
+        <AsyncLogger name="com.mulesoft" level="INFO"/>
+        <AsyncLogger name="org.jetel" level="WARN"/>
+        <AsyncLogger name="Tracking" level="WARN"/>
+
+        <!-- Mulesoft connector loggers -->
+
+        <!-- Http Logger shows wire traffic on DEBUG -->
+        <!-- AsyncLogger name="org.mule.service.http.impl.service.HttpMessageLogger" level="DEBUG"/-->
+        <AsyncLogger name="org.mule.service.http" level="${sys:logconnectors}"/>
+        <AsyncLogger name="org.mule.extension.http" level="${sys:logconnectors}"/>
+
+        <!-- Salesforce 
+        <AsyncLogger name="org.mule.extension.salesforce" level="DEBUG" />
+        
+        Ftp
+        <AsyncLogger name="org.mule.extension.ftp" level="DEBUG" />
+        
+        Database
+        <AsyncLogger name="org.mule.extension.db" level="DEBUG" />
+        
+        JMS
+        <AsyncLogger name="org.mule.extensions.jms" level="DEBUG" />
+        
+        Virtual Machine
+        <AsyncLogger name="org.mule.extensions.vm" level="DEBUG" />
+        
+        Amazon S3
+        <AsyncLogger name="org.mule.extension.s3" level="DEBUG" />
+        -->
+
+        <!-- Mule logger -->
+        <AsyncLogger 
+            name="org.mule.runtime.core.internal.processor.LoggerMessageProcessor" level="INFO"/>
+
+        <!-- Disabling Service Messages -->
+        <!-- 1. Country database not found 
+            https://help.mulesoft.com/s/article/INFO-message-Country-database-not-found-with-Runtime-Fabric-and-Cloudhub-v2-0
+        -->
+        <AsyncLogger 
+            name="com.mulesoft.analytics.collector.metrics.CountryMapper" level="WARN"/>
+            
+        <!-- 2. Suppress Raise Error Stack Details  
+            https://help.mulesoft.com/s/article/How-to-Suppress-Raise-Error-Stack-Details-in-the-Logs
+        -->
+        <AsyncLogger name="org.mule.runtime.core.internal.routing.UntilSuccessfulRouter" level="FATAL"/>
+        <AsyncLogger name="org.mule.runtime.core.internal.exception.OnErrorContinueHandler" level="FATAL"/>
+        
+        <!-- Application logs -->
+        <AsyncLogger name="app" level="${sys:logapplication}"/>
+
+        <AsyncRoot level="INFO">
+            <AppenderRef ref="FILE"/>
+        </AsyncRoot>
+    </Loggers>
+
+</Configuration>

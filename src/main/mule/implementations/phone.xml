@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mule 
+	xmlns:batch="http://www.mulesoft.org/schema/mule/batch"
+	xmlns:salesforce="http://www.mulesoft.org/schema/mule/salesforce"
+	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" 
+	xmlns="http://www.mulesoft.org/schema/mule/core" 
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" 
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
+	xsi:schemaLocation=" 
+		http://www.mulesoft.org/schema/mule/ee/core 
+		http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd 
+		http://www.mulesoft.org/schema/mule/core 
+		http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+		http://www.mulesoft.org/schema/mule/salesforce 
+		http://www.mulesoft.org/schema/mule/salesforce/current/mule-salesforce.xsd
+		http://www.mulesoft.org/schema/mule/batch 
+		http://www.mulesoft.org/schema/mule/batch/current/mule-batch.xsd">
+
+    <flow name="endpoint-phone">     
+        <flow-ref doc:name="initialize batch" name="initialize-batch"/>
+
+        <!-- ********************************************
+             UPDATE ACCOUNT RECORDS IN SALESFORCE
+             ******************************************** -->
+
+        <flow-ref doc:name="query phone" name="query-contact"/>
+
+        <ee:transform doc:name="build Salesforce payload to update phones" >
+            <ee:message >
+                <ee:set-payload ><![CDATA[%dw 2.0
+                output application/java
+                ---
+                vars.originalPayload map (item, index) -> {
+                    'Id' : (vars.listIds filter ( $.contactId == item.contactId )).id[0],
+                
+                    // Celluar phone
+                    ('PersonMobilePhone': item.number) if (item.'type' == "Cellular"),
+                    ('SSOT_MobilePhone_ID__pc': item.phoneId) if (item.'type' == "Cellular"),
+                    ('SSOT_MobilePhone_Primary__pc': item.primary) if (item.'type' == "Cellular"),
+                    ('SSOT_MobilePhone_Date_Time__pc': item.date as DateTime) if (item.'type' == "Cellular"),
+                    ('PersonMobilePhone': '') if (item.'type' != "Cellular"),
+                    ('SSOT_MobilePhone_ID__pc': '') if (item.'type' != "Cellular"),
+                    ('SSOT_MobilePhone_Primary__pc': '') if (item.'type' != "Cellular"),
+                    ('SSOT_MobilePhone_Date_Time__pc': '') if (item.'type' != "Cellular"),
+
+                    // Home phone
+                    ('PersonHomePhone': item.number) if (item.'type' == "Home"),
+                    ('SSOT_HomePhone_ID__pc': item.phoneId) if (item.'type' == "Home"),
+                    ('SSOT_HomePhone_Primary__pc': item.primary) if (item.'type' == "Home"),
+                    ('SSOT_HomePhone_Date_Time__pc': item.date as DateTime) if (item.'type' == "Home"),
+                    ('PersonHomePhone': '') if (item.'type' != "Home"),
+                    ('SSOT_HomePhone_ID__pc': '') if (item.'type' != "Home"),
+                    ('SSOT_HomePhone_Primary__pc': '') if (item.'type' != "Home"),
+                    ('SSOT_HomePhone_Date_Time__pc': '') if (item.'type' != "Home"),
+
+                    // Business phone
+                    ('PersonOtherPhone': item.number) if (item.'type' == "Business"),
+                    ('SSOT_BusinessPhone_ID__pc': item.phoneId) if (item.'type' == "Business"),
+                    ('SSOT_BusinessPhone_Primary__pc': item.primary) if (item.'type' == "Business"),
+                    ('SSOT_BusinessPhone_Date_Time__pc': item.date as DateTime) if (item.'type' == "Business"),
+                    ('PersonOtherPhone': '') if (item.'type' != "Business"),
+                    ('SSOT_BusinessPhone_ID__pc': '') if (item.'type' != "Business"),
+                    ('SSOT_BusinessPhone_Primary__pc': '') if (item.'type' != "Business"),
+                    ('SSOT_BusinessPhone_Date_Time__pc': '') if (item.'type' != "Business"),
+
+                    // Fax phone
+                    ('Fax': item.number) if (item.'type' == "Fax"),
+                    ('SSOT_FaxPhone_ID__pc': item.phoneId) if (item.'type' == "Fax"),
+                    ('SSOT_FaxPhone_Primary__pc': item.primary) if (item.'type' == "Fax"),
+                    ('SSOT_FaxPhone_Date_Time__pc': item.date as DateTime) if (item.'type' == "Fax"),
+                    ('Fax': '') if (item.'type' != "Fax"),
+                    ('SSOT_FaxPhone_ID__pc': '') if (item.'type' != "Fax"),
+                    ('SSOT_FaxPhone_Primary__pc': '') if (item.'type' != "Fax"),
+                    ('SSOT_FaxPhone_Date_Time__pc': '') if (item.'type' != "Fax"),                    
+                }
+                ]]>
+                </ee:set-payload>
+            </ee:message>
+        </ee:transform>
+        
+        <!--<logger level="DEBUG" category="app" message="#[payload]" />-->
+
+        <set-variable variableName="salesforceObject" value="Account" doc:name="Salesforce object" />
+        <set-variable variableName="bulkOperation" value="update" doc:name="Salesforce object" />
+
+        <flow-ref doc:name="run job" name="job-bulk"/>
+
+        <flow-ref doc:name="service response" name="service-response"/>
+        <error-handler ref="global-error-handler" />		
+    </flow>
+</mule>
