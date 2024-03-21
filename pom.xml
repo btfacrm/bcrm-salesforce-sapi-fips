@@ -5,17 +5,17 @@
 	<parent>
 		<groupId>176302a0-a94d-44e9-a517-9e6dc9548d0d</groupId>
 		<artifactId>common-pom</artifactId>
-		<version>1.0.16</version>
+		<version>1.0.17</version>
 		<relativePath/>
 	</parent>
 
 	<groupId>176302a0-a94d-44e9-a517-9e6dc9548d0d</groupId>
-	<artifactId>bcrm-salesforce-sapi-fips-v2-asset</artifactId>
-	<version>1.1.0</version> 
+	<artifactId>bcrm-salesforce-sapi-fips-v3-asset</artifactId>
+	<version>1.1.3</version> 
 	<packaging>mule-application</packaging>
 
-	<name>bcrm-salesforce-sapi-fips-v2</name>
-	<description>BCRM Salesforce System API FIPS compliant v2</description>
+	<name>bcrm-salesforce-sapi-fips-v3</name>
+	<description>BCRM Salesforce System API FIPS compliant v3</description>
 
 	<properties>
 		<!-- Exchange documentation. Details on https://docs.mulesoft.com/exchange/to-publish-assets-maven#publish-an-asset-with-mutable-data -->
@@ -23,7 +23,7 @@
 		<categories key="Backend">Salesforce</categories>
 		<categories key="Asset type">API</categories>
 		<tags>Salesforce, sapi, System, Contact, template</tags>
-		<fields key="sourceCode">https://github.com/btfacrm/bcrm-salesforce-sapi</fields>
+		<fields key="sourceCode">https://github.com/btfacrm/bcrm-salesforce-sapi-fips</fields>
 
 		<!-- RAML specification -->
 		<restconnector.api.spec.group>${project.groupId}</restconnector.api.spec.group>
@@ -31,6 +31,18 @@
 		<restconnector.api.spec.version>1.0.24</restconnector.api.spec.version>
 
 	</properties>
+
+	<build>
+		<plugins>
+			<plugin>
+				<groupId>org.mule.tools.maven</groupId>
+				<artifactId>mule-maven-plugin</artifactId>
+				<configuration>
+					<classifier>mule-application-example</classifier>
+				</configuration>
+			</plugin>
+		</plugins>
+	</build>
 
 	<dependencies>
 		<!-- RAML specification --> 
@@ -46,7 +58,7 @@
 		<dependency>
 			<groupId>${project.groupId}</groupId>
 			<artifactId>common-btfacore</artifactId>
-			<version>1.0.18</version>
+			<version>1.0.19</version>
 			<classifier>mule-plugin</classifier>
 		</dependency>
 
