@@ -10,12 +10,12 @@
 	</parent>
 
 	<groupId>176302a0-a94d-44e9-a517-9e6dc9548d0d</groupId>
-	<artifactId>bcrm-salesforce-sapi-fips-v10-asset</artifactId>
-	<version>1.1.10</version> 
+	<artifactId>bcrm-salesforce-sapi-fips-v11-asset</artifactId>
+	<version>1.1.11</version> 
 	<packaging>mule-application</packaging>
 
-	<name>bcrm-salesforce-sapi-fips-v10</name>
-	<description>BCRM Salesforce System API FIPS compliant v10</description>
+	<name>bcrm-salesforce-sapi-fips-v11</name>
+	<description>BCRM Salesforce System API FIPS compliant v11</description>
 
 	<properties>
 		<!-- Exchange documentation. Details on https://docs.mulesoft.com/exchange/to-publish-assets-maven#publish-an-asset-with-mutable-data -->
@@ -67,8 +67,8 @@
 						  <salesforce.audienceurl>https://test.salesforce.com</salesforce.audienceurl>
 						  <salesforce.tokenendpoint>MyTokenEndpoint</salesforce.tokenendpoint>
 						  <salesforce.certificatealias>MyCertificate</salesforce.certificatealias>
-						  <jks.path>myhttpjks</jks.path>
-						  <jks.keypassword>SomePassword</jks.keypassword>
+						  <jks.path>test</jks.path>
+						  <jks.keypassword>test</jks.keypassword>
 						  <jks.alias>DEBUG</jks.alias>
 						  <logapplication>DEBUG</logapplication>
 						  <env>dev</env>
