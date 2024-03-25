@@ -10,12 +10,12 @@
 	</parent>
 
 	<groupId>176302a0-a94d-44e9-a517-9e6dc9548d0d</groupId>
-	<artifactId>bcrm-salesforce-sapi-fips-v3-asset</artifactId>
-	<version>1.1.3</version> 
+	<artifactId>bcrm-salesforce-sapi-fips-v9-asset</artifactId>
+	<version>1.1.9</version> 
 	<packaging>mule-application</packaging>
 
-	<name>bcrm-salesforce-sapi-fips-v3</name>
-	<description>BCRM Salesforce System API FIPS compliant v3</description>
+	<name>bcrm-salesforce-sapi-fips-v9</name>
+	<description>BCRM Salesforce System API FIPS compliant v9</description>
 
 	<properties>
 		<!-- Exchange documentation. Details on https://docs.mulesoft.com/exchange/to-publish-assets-maven#publish-an-asset-with-mutable-data -->
@@ -32,6 +32,9 @@
 
 	</properties>
 
+
+	<!--  THIS SECTION IS NOT NEEDED, ONLY FOR MULESOFT SUPPORT TEAM 
+	TO DEPLOY THE APPLICAITON USING THE MAVEN-PLUGIN  -->
 	<build>
 		<plugins>
 			<plugin>
@@ -39,6 +42,38 @@
 				<artifactId>mule-maven-plugin</artifactId>
 				<configuration>
 					<classifier>mule-application-example</classifier>
+
+					<cloudHubDeployment>
+						<uri>https://gov.anypoint.mulesoft.com</uri>
+						<muleVersion>4.4.0</muleVersion>
+						<connectedAppClientId>1ae5feaf0024467d9778070d3554d414</connectedAppClientId>
+						<connectedAppClientSecret>533bFF98EcB946ba9Ad0AeD7773688Bd</connectedAppClientSecret>
+						<connectedAppGrantType>client_credentials</connectedAppGrantType>
+						<applicationName>bcrm-salesforce-sapi-fips-v10-dev</applicationName>
+						<environment>dev</environment>
+						<region>us-gov-west-1</region>
+						<workers>1</workers>
+						<properties>
+						  <api.id>value</api.id>
+						  <anypoint.platform.client_id>eb6f6f84c08c4a08b8031ea58731ed68</anypoint.platform.client_id>
+						  <anypoint.platform.client_secret>C6aB257A54894Afe83350167E0C5dd63</anypoint.platform.client_secret>
+						  <anypoint.platform.config.analytics.agent.enabled>true</anypoint.platform.config.analytics.agent.enabled>
+						  <anypoint.platform.visualizer.tags>salesforce,sapi</anypoint.platform.visualizer.tags>
+						  <anypoint.platform.visualizer.layer>System</anypoint.platform.visualizer.layer>
+						  <salesforce.storepassword>0XSsv39xcWMHmXx</salesforce.storepassword>
+						  <salesforce.principal>mulesoftintegration@salesforce.com.btfadev</salesforce.principal>
+						  <salesforce.consumerkey>3MVG9538YANZ1dpwdIdYMIKUx7Qir3Psoo48d3azQ5QnWHYWsrSB1pRNkroXaY.gB0ByCoGJdthShPFIYJsCt</salesforce.consumerkey>
+						  <salesforce.keystore>DSkzFBrk7Hq4CBt.p12</salesforce.keystore>
+						  <salesforce.audienceurl>https://test.salesforce.com</salesforce.audienceurl>
+						  <salesforce.tokenendpoint>http://btfa--dev.sandbox.my.salesforce.com/services/oauth2/token</salesforce.tokenendpoint>
+						  <salesforce.certificatealias>mulesoft_integration_dev</salesforce.certificatealias>
+						  <jks.path>DHRiMeAvPXylBkF.p12</jks.path>
+						  <jks.keypassword>JNKMEuWanGMQjwm</jks.keypassword>
+						  <jks.alias>DEBUG</jks.alias>
+						  <logapplication>DEBUG</logapplication>
+						  <env>dev</env>
+						</properties>
+					  </cloudHubDeployment>
 				</configuration>
 			</plugin>
 		</plugins>
